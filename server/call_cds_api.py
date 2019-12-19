@@ -2,7 +2,8 @@
 import cdsapi
 import json
 
-# TODO: if single or pressure --> if presure it needs property 'pressure_level'
+
+# TODO: if single or pressure --> if pressure it needs property 'pressure_level'
 
 def check_json(req):
     defined_properties = ['variable', 'year', 'month', 'day', 'time', 'grid', 'area']
@@ -36,5 +37,4 @@ c.retrieve(
         'area': request['area'],
         'format': 'grib'
     },
-    'wheather_response.json'
-)
+    'generate.grib')

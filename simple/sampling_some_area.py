@@ -27,5 +27,5 @@ c.retrieve(
         'grid': [0.5, 0.5], # Latitude/longitude grid: east-west (longitude) and north-south resolution (latitude). Default: 0.25 x 0.25
         'area:': [32, 32, 30, 34],  # North, West, South, East. Default: global
     },
-    'new-beer-sheva.grib'
+    'sample1.grib'
 )

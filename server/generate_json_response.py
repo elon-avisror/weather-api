@@ -22,19 +22,14 @@ def convert_cds_json(cds_json):
 
     for cds_element in cds_json:
 
-        # first time of each day
+        # first time init (it is the first item in the dictionary)
         if first_day == '':
-            cnt_hr = 0
             first_day = get_date(cds_element['header']['refTime'])
 
-            # it is the first item in the dictionary
-            if day == {}:
-                day = {'date': first_day['date'],
-                       'hour': [{first_day['hour']: {
-                           params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]
-                       }}]}
-            else:
-                day = new_day
+            day = {'date': first_day['date'],
+                   'hour': [{first_day['hour']: {
+                       params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]
+                   }}]}
 
         else:
             # TODO: take the refTime and parse from it the hours of each day and its values
@@ -43,10 +38,8 @@ def convert_cds_json(cds_json):
             # same day
             if first_day['date'] == last_day['date']:
 
-                print(day)
                 # same hour
                 if first_day['hour'] == last_day['hour']:
-                    #day['hour'][cnt_hr][first_day['hour']] = {params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]}
                     day['hour'][cnt_hr][first_day['hour']][params_dict[cds_element['header']['parameterNumber']]] = cds_element['data'][0]
 
                 # new hour
@@ -59,9 +52,17 @@ def convert_cds_json(cds_json):
             else:
                 res['day'].append(day)
                 cnt_d += 1
-                new_day = {'date': last_day['date'],
+
+                # the first day of this date
+                first_day = {'date': last_day['date'],
                            'hour': [{last_day['hour']: {params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]}}]}
-                first_day = ''
+
+                # save the day
+                day = {'date': last_day['date'],
+                           'hour': [{last_day['hour']: {params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]}}]}
+
+                # init the hours-count
+                cnt_hr = 0
 
     return res
 

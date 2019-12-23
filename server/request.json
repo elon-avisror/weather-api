@@ -1,28 +1,49 @@
 {
   "variable": [
     "specific_humidity",
-    "total_precipitation",
+    "soil_temperature_level_1",
     "10m_u_component_of_wind",
     "10m_v_component_of_wind",
-    "2m_temperature"
+    "2m_temperature",
+    "soil_temperature_level_2",
+    "surface_net_solar_radiation",
+    "soil_temperature_level_3",
+    "maximum_2m_temperature_since_previous_post_processing",
+    "minimum_2m_temperature_since_previous_post_processing",
+    "total_precipitation",
+    "soil_temperature_level_4"
   ],
-  "year": "1994",
+  "year": "1998",
   "month": [
-    "09",
-    "10",
-    "11"
+    "08"
   ],
   "day": [
-    "08",
-    "09",
-    "10"
+    "09"
   ],
   "time": [
+    "01:00",
+    "02:00",
+    "03:00",
+    "04:00",
+    "05:00",
+    "06:00",
+    "07:00",
+    "08:00",
     "09:00",
     "10:00",
     "11:00",
     "12:00",
-    "13:00"
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00",
+    "19:00",
+    "20:00",
+    "21:00",
+    "22:00",
+    "23:00"
   ],
   "grid": [
     1,

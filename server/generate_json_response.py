@@ -1,10 +1,11 @@
 import json
 
-params_dict = {99: 'maximum_2m_temperature_since_previous_post_processing',
+params_dict = {4: 'specific-humidity',
+                99: 'maximum_2m_temperature_since_previous_post_processing',
                36: 'total_precipitation',
                37: '10m_u_component_of_wind',
                38: '10m_v_component_of_wind',
-               39: '2m_temperature'}
+               38: '2m_temperature'}
 
 
 def get_date(ref_time):

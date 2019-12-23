@@ -1,5 +1,4 @@
 import json
-import sys
 
 params_dict = {4: 'specific-humidity',
                10: 'soil_temperature_level_1',

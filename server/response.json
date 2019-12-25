@@ -1,0 +1,49 @@
+{
+  "header": {
+    "from": "31/08/1990",
+    "to": "01/09/1990",
+    "latitude": 34,
+    "longitude": 35,
+    "grid": [
+      0.25,
+      0.25
+    ],
+    "src": "ecmwf"
+  },
+  "data": [
+    {
+      "date": "31/08/1990",
+      "values": {
+        "specific_humidity": 1,
+        "soil_temperature_level_1": 2,
+        "10m_u_component_of_wind": 3,
+        "10m_v_component_of_wind": 4,
+        "2m_temperature": 5,
+        "soil_temperature_level_2": 6,
+        "surface_net_solar_radiation": 7,
+        "soil_temperature_level_3": 8,
+        "maximum_2m_temperature_since_previous_post_processing": 9,
+        "minimum_2m_temperature_since_previous_post_processing": 10,
+        "total_precipitation": 11,
+        "soil_temperature_level_4": 12
+      }
+    },
+    {
+      "date": "01/09/1990",
+      "values": {
+        "specific_humidity": 1,
+        "soil_temperature_level_1": 2,
+        "10m_u_component_of_wind": 3,
+        "10m_v_component_of_wind": 4,
+        "2m_temperature": 5,
+        "soil_temperature_level_2": 6,
+        "surface_net_solar_radiation": 7,
+        "soil_temperature_level_3": 8,
+        "maximum_2m_temperature_since_previous_post_processing": 9,
+        "minimum_2m_temperature_since_previous_post_processing": 10,
+        "total_precipitation": 11,
+        "soil_temperature_level_4": 12
+      }
+    }
+  ]
+}

@@ -1,8 +1,5 @@
-#!/usr/bin/env python
 import cdsapi
 import json
-import sys
-
 from datetime import datetime
 
 # get the timestamp (as file id)
@@ -44,6 +41,5 @@ if check_json(request):
         },
         'res' + ts + '.grib')
 
-    sys.exit(ts)
 else:
     print('The structure of the request.json is not valid!')

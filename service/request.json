@@ -2,6 +2,5 @@
   "from": "31/08/1990",
   "to": "01/09/1990",
   "latitude": 34,
-  "longitude": 35,
-  "grid": [0.75, 0.75]
+  "longitude": 35
 }

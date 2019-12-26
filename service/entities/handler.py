@@ -25,8 +25,16 @@ def grid_is_valid(grid):
 
 
 # TODO: create a min_max function - gets an array of day metrics and operator (>/<) and gets the min_or_max of this day
-def min_max(arr, op):
-    return False
+def get_min(old, new):
+    if old > new:
+        return new
+    return old
+
+
+def get_max(old, new):
+    if old < new:
+        return new
+    return old
 
 
 # TODO: create an average function - run on the day array and for each variable calculate its average
@@ -35,37 +43,10 @@ def avg(arr):
     return False
 
 
-def get_date(ref_time):
-    datetime_el = ref_time.split('T')
-    return {'date': datetime_el[0], 'hour': datetime_el[1].split('.')[0]}
-
-
-def calc_year(request):
-    from_year = get_year(request['from'])
-    to_year = get_year(request['to'])
-
-    if from_year == to_year:
-        year = from_year
-
-    return False
-
-
-def calc_month(request):
-    from_month = get_month(request['from'])
-    to_month = get_month(request['to'])
-    return False
-
-
-def calc_day(request):
-    from_day = get_day(request['from'])
-    to_day = get_day(request['to'])
-    return False
-
-
 class Handler:
 
     def __init__(self):
-        self.ts = datetime.now().time().strftime('"%H:%M:%S.%f"')
+        self.ts = datetime.now().time().strftime('%H:%M:%S.%f')
 
         self.params_dict = {4: 'specific-humidity',
                             10: 'soil_temperature_level_1',
@@ -100,6 +81,7 @@ class Handler:
         ]
 
         self.times = [
+            '00:00',
             '01:00',
             '02:00',
             '03:00',
@@ -126,6 +108,13 @@ class Handler:
         ]
 
         self.grid = [0.25, 0.25]
+        self.header = {
+            'from': '',
+            'to': '',
+            'latitude': 0,
+            'longitude': 0,
+            'grid': []
+        }
 
     # Structure JSON validation
     def validate(self, request):
@@ -138,8 +127,6 @@ class Handler:
                 return False
             else:
                 # switch-case
-                print('key: ' + key)
-                print('value: ' + str(value))
                 if key == 'from' or key == 'to':
                     if not date_is_valid(value):
                         return False
@@ -154,116 +141,96 @@ class Handler:
             try:
                 value = request[key]
             except:
+                # default grid: 0.25x0.25
+                self.make_header(request)
                 return True
             else:
                 if not grid_is_valid(value):
                     return False
 
+        # change the grid (from default: 0.25x0.25)
+        self.grid = request['grid']
+        self.make_header(request)
         return True
 
-    def call(self, request):
-        years = calc_year(request)
-        months = calc_month(request)
-        days = calc_day(request)
+    def make_header(self, request):
+        self.header['to'] = request['to']
+        self.header['from'] = request['from']
+        self.header['latitude'] = request['latitude']
+        self.header['longitude'] = request['longitude']
+        self.header['grid'] = self.grid
+
+    def call(self, single_date, location):
 
         # get the timestamp (as file id)
-        filename = 'res' + self.ts
+        filename = 'cds' + self.ts
 
         # TODO: if single or pressure --> if pressure it needs property 'pressure_level'
         c = cdsapi.Client()
 
-        if request['grid']:
-            grid = request['grid']
-        else:
-            # default 0.25x0.25
-            grid = self.grid
-
         # API request structure: https://cds.climate.copernicus.eu/api-how-to
-
-        N = S = request['latitude']
-        W = E = request['longitude']
-
         metadata = c.retrieve(
             'reanalysis-era5-single-levels',
             {
                 'product_type': 'reanalysis',
                 'variable': self.variables,  # Constant
-                'year': years,
-                'month': months,
-                'day': days,
+                'year': str(single_date.year),
+                'month': str(single_date.month),
+                'day': str(single_date.day),
                 'time': self.times,
-                'grid': grid,
+                'grid': self.grid,
                 # Latitude/longitude grid: east-west (longitude) and north-south resolution (latitude). Default: 0.25 x 0.25
-                'area': [N, W, S, E],  # North, West, South, East. Default: global
+                'area': location,  # North, West, South, East. Default: global
                 'format': 'grib'
             },
             filename + '.grib')
 
         return filename
 
-    def parse(self, json_filename, request):
-        cds_json = json.loads(open(json_filename).read())
+    def parse(self, cds_json, single_date):
 
-        res = {
-            'header': make_header(request),
-            'data': []
+        day = {
+            'date': single_date.strftime('%d/%m/%Y'),
+            'values': {}
         }
 
-        day = {}
-        cnt_d = 0
-        first_day = ''
-        cnt_hr = 0
+        cnt_day = {}
 
         for cds_element in cds_json:
 
-            # TODO: convert forecastTime to date like refTime (and switch by them)
-            # first time init (it is the first item in the dictionary)
-            if first_day == '':
-                first_day = get_date(cds_element['header']['refTime'])
+            variable = self.params_dict[cds_element['header']['parameterNumber']]
 
-                day = {'date': first_day['date'],
-                       'hour': [{first_day['hour']: {
-                           self.params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]
-                       }}]}
+            # first hour
+            if not variable in day['values']:
+                day['values'][variable] = cds_element['data'][0]
+                cnt_day[variable] = 1
 
+            # other hours
             else:
-                # take the refTime and parse from it the hours of each day and its values
-                last_day = get_date(cds_element['header']['refTime'])
 
-                # same day
-                if first_day['date'] == last_day['date']:
+                # min
+                if variable == self.params_dict[73]:
+                    day['values'][variable] = get_min(day['values'][variable], cds_element['data'][0])
 
-                    # same hour
-                    if first_day['hour'] == last_day['hour']:
-                        day['hour'][cnt_hr][first_day['hour']][
-                            self.params_dict[cds_element['header']['parameterNumber']]] = cds_element['data'][0]
+                # max
+                elif variable == self.params_dict[72]:
+                    day['values'][variable] = get_max(day['values'][variable], cds_element['data'][0])
 
-                    # new hour
-                    else:
-                        day['hour'].append({last_day['hour']: {
-                            self.params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]}})
-                        first_day['hour'] = last_day['hour']
-                        cnt_hr += 1
-
-                # new day
+                # sum (for avg)
                 else:
+                    day['values'][self.params_dict[cds_element['header']['parameterNumber']]] += cds_element['data'][0]
 
-                    # TODO: make avg and min-max of the date, and append it
-                    res['data'].append(day)
-                    cnt_d += 1
+                cnt_day[variable] += 1
 
-                    # the first day of this date
-                    first_day = {'date': last_day['date'],
-                                 'hour': [{last_day['hour']: {
-                                     self.params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][
-                                         0]}}]}
+        for variable in day['values']:
 
-                    # save the day
-                    day = {'date': last_day['date'],
-                           'hour': [{last_day['hour']: {
-                               self.params_dict[cds_element['header']['parameterNumber']]: cds_element['data'][0]}}]}
+            day_hours = len(self.times)
 
-                    # init the hours-count
-                    cnt_hr = 0
+            if True:
+                print('there are ' + str(24 - cnt_day[variable]) + ' missing values for: ' + variable)
 
-        return res
+            # avg all but min-max
+            if day['values'][variable] != self.params_dict[73] and day['values'][variable] != self.params_dict[73]:
+                day['values'][variable] /= day_hours
+
+        return day

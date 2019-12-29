@@ -3,44 +3,41 @@ import json
 from datetime import datetime
 
 
-def date_is_valid(date):
+def __date_is_valid(date):
     # Check if the date object in given time format 'dd/mm/yyyy'
     if isinstance(datetime.strptime(date, '%d/%m/%Y'), datetime):
         return True
     return False
 
 
-def coordinate_is_valid(coordinate):
+def __coordinate_is_valid(coordinate):
     # Check if it is a number
     if isinstance(coordinate, (int, float)):
         return True
     return False
 
 
-def grid_is_valid(grid):
+def __grid_is_valid(grid):
     # Check if this is an array that describes a grid i.e: [0.75, 0.75]
     if isinstance(grid, list) and len(grid) == 2:
         return True
     return False
 
 
-# TODO: create a min_max function - gets an array of day metrics and operator (>/<) and gets the min_or_max of this day
-def get_min(old, new):
+def __get_min(old, new):
     if old > new:
         return new
     return old
 
 
-def get_max(old, new):
+def __get_max(old, new):
     if old < new:
         return new
     return old
 
 
-# TODO: create an average function - run on the day array and for each variable calculate its average
-def avg(arr):
-    # for each var in dict, gets the avg
-    return False
+def __calc_avg(param, hours):
+    return param / hours
 
 
 class Handler:
@@ -128,10 +125,10 @@ class Handler:
             else:
                 # switch-case
                 if key == 'from' or key == 'to':
-                    if not date_is_valid(value):
+                    if not Handler.date_is_valid(value):
                         return False
                 elif key == 'latitude' or key == 'longitude':
-                    if not coordinate_is_valid(value):
+                    if not Handler.coordinate_is_valid(value):
                         return False
                 else:
                     return False
@@ -142,23 +139,16 @@ class Handler:
                 value = request[key]
             except:
                 # default grid: 0.25x0.25
-                self.make_header(request)
+                self.__(request)
                 return True
             else:
-                if not grid_is_valid(value):
+                if not Handler.grid_is_valid(value):
                     return False
 
         # change the grid (from default: 0.25x0.25)
         self.grid = request['grid']
-        self.make_header(request)
+        self.__make_header(request)
         return True
-
-    def make_header(self, request):
-        self.header['to'] = request['to']
-        self.header['from'] = request['from']
-        self.header['latitude'] = request['latitude']
-        self.header['longitude'] = request['longitude']
-        self.header['grid'] = self.grid
 
     def call(self, single_date, location):
 
@@ -187,6 +177,9 @@ class Handler:
 
         return filename
 
+    def rawDataForField(self, fieldName, cds_json):
+        print("fgdfd")
+
     def parse(self, cds_json, single_date):
 
         day = {
@@ -210,11 +203,11 @@ class Handler:
 
                 # min
                 if variable == self.params_dict[73]:
-                    day['values'][variable] = get_min(day['values'][variable], cds_element['data'][0])
+                    day['values'][variable] = Handler.__get_min(day['values'][variable], cds_element['data'][0])
 
                 # max
                 elif variable == self.params_dict[72]:
-                    day['values'][variable] = get_max(day['values'][variable], cds_element['data'][0])
+                    day['values'][variable] = Handler.__get_max(day['values'][variable], cds_element['data'][0])
 
                 # sum (for avg)
                 else:
@@ -229,8 +222,17 @@ class Handler:
             if True:
                 print('there are ' + str(24 - cnt_day[variable]) + ' missing values for: ' + variable)
 
-            # avg all but min-max
+            # calculate avg for all variables, but min-max variables,
+            # whose calculated in the previous section of the algorithm
             if day['values'][variable] != self.params_dict[73] and day['values'][variable] != self.params_dict[73]:
-                day['values'][variable] /= day_hours
+                # calc average section
+                day['values'][variable] = Handler.__calc_avg(day['values'][variable], day_hours)
 
         return day
+
+    def __make_header(self, request):
+        self.header['to'] = request['to']
+        self.header['from'] = request['from']
+        self.header['latitude'] = request['latitude']
+        self.header['longitude'] = request['longitude']
+        self.header['grid'] = self.grid

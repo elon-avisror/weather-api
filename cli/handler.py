@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 class Handler:
     date_format = '%d-%m-%Y'
+    timestamp_format = '%H:%M:%S.%f'
     format_types = ['json', 'raw']
 
     variables = [
@@ -77,6 +78,7 @@ class Handler:
         # default 'json' format
         self.format_type = Handler.format_types[0]
 
+        # default 'all' variables
         self.variables = Handler.variables
 
         self.header = {
@@ -113,7 +115,6 @@ class Handler:
             try:
                 value = request[key]
             except:
-                # request[key] is not there
                 if key == 'to_date':
                     self.to_date = request['from_date']
             else:
@@ -154,7 +155,7 @@ class Handler:
     def call(self, single_date, location):
 
         # get the timestamp (as a file id)
-        self.ts = datetime.now().time().strftime('%H:%M:%S.%f')
+        self.ts = Handler.get_timestamp()
         filename = 'cds' + self.ts
 
         # TODO: if single or pressure --> if pressure it needs property 'pressure_level'
@@ -193,6 +194,7 @@ class Handler:
         return json.loads(open(self.dir + filename).read())
 
     def save(self, data):
+        self.ts = Handler.get_timestamp()
         out_filename = 'final' + self.ts + '.json'
         with open(self.dir + out_filename, 'w') as outfile:
             json.dump(data, outfile)
@@ -221,13 +223,12 @@ class Handler:
                 if variable not in day['values']:
                     cnt_day[variable] = 1
                     day['values'][variable] = data
-                    day['calculates'][variable] = {self.times[cnt_day[variable]-1]: data}
-
+                    day['calculates'][variable] = {self.times[cnt_day[variable] - 1]: data}
 
                 # other hours
                 else:
                     cnt_day[variable] += 1
-                    day['calculates'][variable][self.times[cnt_day[variable]-1]] = data
+                    day['calculates'][variable][self.times[cnt_day[variable] - 1]] = data
 
                     # min
                     if variable == self.params_dict[73]:
@@ -241,12 +242,12 @@ class Handler:
                     else:
                         day['values'][variable] += data
 
-
         for variable in day['values']:
 
             day_hours = len(self.times)
 
-            if True:
+            # validate if there are missing data
+            if (day_hours - cnt_day[variable]) != 0:
                 print('there are ' + str(day_hours - cnt_day[variable]) + ' missing values for: ' + variable)
 
             # calculate avg for all variables, but min-max variables,
@@ -321,9 +322,11 @@ class Handler:
 
     @staticmethod
     def variables_is_valid(variables):
-        if variables in Handler.variables:
-            return True
-        return False
+        # Check if this variables includes in our variables
+        for variable in variables:
+            if variable not in Handler.variables:
+                return False
+        return True
 
     @staticmethod
     def get_min(old, new):
@@ -340,3 +343,7 @@ class Handler:
     @staticmethod
     def calc_avg(param, hours):
         return param / hours
+
+    @staticmethod
+    def get_timestamp():
+        return datetime.now().time().strftime(Handler.timestamp_format)

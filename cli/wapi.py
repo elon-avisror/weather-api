@@ -6,7 +6,8 @@ from handler import Handler
 def main():
     parser = argparse.ArgumentParser(description='Welcome to Weather API - follow the instructions to get started...')
     parser.add_argument('from_date', nargs='?', help='Date in format "dd-mm-Y" e.g. "09-08-1990"')
-    parser.add_argument('--to_date', nargs='?', help='Date in format "dd-mm-Y" e.g. "01-09-1990" (defaults "from_date")')
+    parser.add_argument('--to_date', nargs='?',
+                        help='Date in format "dd-mm-Y" e.g. "01-09-1990" (defaults "from_date")')
     parser.add_argument('latitude', nargs='?', help='Coordinate in format number e.g. "34.5"')
     parser.add_argument('longitude', nargs='?', help='Coordinate in format number e.g. "35"')
     parser.add_argument('--grid', nargs='?', help='Grid size e.g. "0.5,0.5 (defaults "0.25,0.25")')
@@ -16,12 +17,12 @@ def main():
 
     request = {
         'from_date': args.from_date,
-        '--to_date': args.to_date,
+        'to_date': args.to_date,
         'latitude': float(args.latitude),
         'longitude': float(args.longitude),
-        '--grid': args.grid,
-        '--format_type': args.format_type,
-        '--variables': str(args.variables).split(',')
+        'grid': args.grid,
+        'format_type': args.format_type,
+        'variables': str(args.variables).split(',')
     }
 
     handler = Handler()
@@ -37,14 +38,18 @@ def main():
 
         json_response = handler.calc_range(start_date, end_date, location)
 
+        # 3. Write The Response to JSON File
         if handler.format_type == 'json':
-            # 3. Write The Response To A JSON File
-            msg = handler.save(json_response)
-            print('Successful, for the json results see ' + handler.dir + msg)
+            filename = handler.save(json_response)
 
         # to raw option
         else:
-            print('almost')
+            filename = []
+            for day in json_response['data']:
+                filename.append(handler.save(day['calculates']))
+
+        print('Successful, for the ' + handler.format_type + ' results see ' + handler.dir + str(filename))
+
 
     else:
         print('The structure of the request.json is not valid!')

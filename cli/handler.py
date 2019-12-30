@@ -5,89 +5,89 @@ from datetime import datetime, timedelta
 
 
 class Handler:
-    date_format = '%d-%m-%Y'
-    timestamp_format = '%H:%M:%S.%f'
-    format_types = ['json', 'raw']
+    date_format = "%d-%m-%Y"
+    timestamp_format = "%H:%M:%S.%f"
+    format_types = ["json", "raw"]
 
     variables = [
-        'specific_humidity',
-        'soil_temperature_level_1',
-        '10m_u_component_of_wind',
-        '10m_v_component_of_wind',
-        '2m_temperature',
-        'soil_temperature_level_2',
-        'surface_net_solar_radiation',
-        'soil_temperature_level_3',
-        'maximum_2m_temperature_since_previous_post_processing',
-        'minimum_2m_temperature_since_previous_post_processing',
-        'total_precipitation',
-        'soil_temperature_level_4'
+        "specific_humidity",
+        "soil_temperature_level_1",
+        "10m_u_component_of_wind",
+        "10m_v_component_of_wind",
+        "2m_temperature",
+        "soil_temperature_level_2",
+        "surface_net_solar_radiation",
+        "soil_temperature_level_3",
+        "maximum_2m_temperature_since_previous_post_processing",
+        "minimum_2m_temperature_since_previous_post_processing",
+        "total_precipitation",
+        "soil_temperature_level_4"
     ]
 
     times = [
-        '00:00',
-        '01:00',
-        '02:00',
-        '03:00',
-        '04:00',
-        '05:00',
-        '06:00',
-        '07:00',
-        '08:00',
-        '09:00',
-        '10:00',
-        '11:00',
-        '12:00',
-        '13:00',
-        '14:00',
-        '15:00',
-        '16:00',
-        '17:00',
-        '18:00',
-        '19:00',
-        '20:00',
-        '21:00',
-        '22:00',
-        '23:00'
+        "00:00",
+        "01:00",
+        "02:00",
+        "03:00",
+        "04:00",
+        "05:00",
+        "06:00",
+        "07:00",
+        "08:00",
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
     ]
 
     def __init__(self):
-        self.dir = os.getcwd() + '/'
-        self.ts = ''
+        self.dir = os.getcwd() + "/"
+        self.ts = ""
 
-        self.params_dict = {4: 'specific-humidity',
-                            10: 'soil_temperature_level_1',
-                            36: '10m_u_component_of_wind',
-                            37: '10m_v_component_of_wind',
-                            38: '2m_temperature',
-                            41: 'soil_temperature_level_2',
-                            47: 'surface_net_solar_radiation',
-                            54: 'soil_temperature_level_3',
-                            72: 'maximum_2m_temperature_since_previous_post_processing',
-                            73: 'minimum_2m_temperature_since_previous_post_processing',
-                            99: 'total_precipitation',
-                            107: 'soil_temperature_level_4'}
+        self.params_dict = {4: "specific-humidity",
+                            10: "soil_temperature_level_1",
+                            36: "10m_u_component_of_wind",
+                            37: "10m_v_component_of_wind",
+                            38: "2m_temperature",
+                            41: "soil_temperature_level_2",
+                            47: "surface_net_solar_radiation",
+                            54: "soil_temperature_level_3",
+                            72: "maximum_2m_temperature_since_previous_post_processing",
+                            73: "minimum_2m_temperature_since_previous_post_processing",
+                            99: "total_precipitation",
+                            107: "soil_temperature_level_4"}
 
         # TODO: check latitude and longitude with types: int or float and its dynamic size
-        self.required_properties = ['from_date', 'latitude', 'longitude']
-        self.optional_properties = ['to_date', 'grid', 'format_type', 'variables']
+        self.required_properties = ["from_date", "latitude", "longitude"]
+        self.optional_properties = ["to_date", "grid", "format_type", "variables"]
 
-        self.to_date = ''
+        self.to_date = ""
         self.grid = [0.25, 0.25]
 
-        # default 'json' format
+        # default "json" format
         self.format_type = Handler.format_types[0]
 
-        # default 'all' variables
+        # default "all" variables
         self.variables = Handler.variables
 
         self.header = {
-            'from_date': '',
-            'to_date': '',
-            'latitude': 0,
-            'longitude': 0,
-            'grid': [],
-            'format_type': ''
+            "from_date": "",
+            "to_date": "",
+            "latitude": 0,
+            "longitude": 0,
+            "grid": [],
+            "format_type": ""
         }
 
     # Structure JSON validation
@@ -101,10 +101,10 @@ class Handler:
                 return False
             else:
                 # switch-case
-                if key == 'from_date':
+                if key == "from_date":
                     if not Handler.date_is_valid(value):
                         return False
-                elif key == 'latitude' or key == 'longitude':
+                elif key == "latitude" or key == "longitude":
                     if not Handler.coordinate_is_valid(value):
                         return False
                 else:
@@ -115,32 +115,32 @@ class Handler:
             try:
                 value = request[key]
             except:
-                if key == 'to_date':
-                    self.to_date = request['from_date']
+                if key == "to_date":
+                    self.to_date = request["from_date"]
             else:
-                if key == 'to_date':
+                if key == "to_date":
                     if not value:
-                        self.to_date = request['from_date']
+                        self.to_date = request["from_date"]
                     elif Handler.date_is_valid(value):
                         self.to_date = value
                     else:
                         return False
 
-                elif key == 'grid':
+                elif key == "grid":
                     if value:
                         if Handler.grid_is_valid(value):
                             self.grid = value
                         else:
                             return False
 
-                elif key == 'format_type':
+                elif key == "format_type":
                     if value:
                         if Handler.format_type_is_valid(value):
                             self.format_type = value
                         else:
                             return False
 
-                elif key == 'variables':
+                elif key == "variables":
                     if value:
                         if Handler.variables_is_valid(value):
                             self.variables = value
@@ -152,42 +152,42 @@ class Handler:
         self.__make_header(request)
         return True
 
-    def call(self, single_date, location):
+    def __call(self, single_date, location):
 
         # get the timestamp (as a file id)
         self.ts = Handler.get_timestamp()
-        filename = 'cds' + self.ts
+        filename = "cds" + self.ts
 
-        # TODO: if single or pressure --> if pressure it needs property 'pressure_level'
+        # TODO: if single or pressure --> if pressure it needs property "pressure_level"
         c = cdsapi.Client()
 
         # API request structure: https://cds.climate.copernicus.eu/api-how-to
         metadata = c.retrieve(
-            'reanalysis-era5-single-levels',
+            "reanalysis-era5-single-levels",
             {
-                'product_type': 'reanalysis',
-                'variable': self.variables,  # Constant
-                'year': str(single_date.year),
-                'month': str(single_date.month),
-                'day': str(single_date.day),
-                'time': self.times,
-                'grid': self.grid,
+                "product_type": "reanalysis",
+                "variable": self.variables,  # Constant
+                "year": str(single_date.year),
+                "month": str(single_date.month),
+                "day": str(single_date.day),
+                "time": self.times,
+                "grid": self.grid,
                 # Latitude/longitude grid: east-west (longitude) and north-south resolution (latitude). Default: 0.25 x 0.25
-                'area': location,  # North, West, South, East. Default: global
-                'format': 'grib'
+                "area": location,  # North, West, South, East. Default: global
+                "format": "grib"
             },
-            filename + '.grib')
+            filename + ".grib")
 
         return filename
 
     def calc_range(self, start_date, end_date, location):
         json_res = {
-            'header': self.header,
-            'data': []
+            "header": self.header,
+            "data": []
         }
 
         for single_date in Handler.date_range(start_date, end_date):
-            json_res['data'].append(self.__calc_day(single_date, location))
+            json_res["data"].append(self.__calc_day(single_date, location))
         return json_res
 
     def read(self, filename):
@@ -195,91 +195,91 @@ class Handler:
 
     def save(self, data):
         self.ts = Handler.get_timestamp()
-        out_filename = 'final' + self.ts + '.json'
-        with open(self.dir + out_filename, 'w') as outfile:
+        out_filename = "final" + self.ts + ".json"
+        with open(self.dir + out_filename, "w") as outfile:
             json.dump(data, outfile)
         return out_filename
 
     def __parse(self, cds_json, single_date):
 
         day = {
-            'date': single_date.strftime(self.date_format),
-            'values': {},
-            'calculates': {}
+            "date": single_date.strftime(self.date_format),
+            "values": {},
+            "calculates": {}
         }
 
         cnt_day = {}
 
         for cds_element in cds_json:
 
-            variable = self.params_dict[cds_element['header']['parameterNumber']]
+            variable = self.params_dict[cds_element["header"]["parameterNumber"]]
 
             # is a requested variable
             if variable in self.variables:
 
-                data = cds_element['data'][0]
+                data = cds_element["data"][0]
 
                 # first hour
-                if variable not in day['values']:
+                if variable not in day["values"]:
                     cnt_day[variable] = 1
-                    day['values'][variable] = data
-                    day['calculates'][variable] = {self.times[cnt_day[variable] - 1]: data}
+                    day["values"][variable] = data
+                    day["calculates"][variable] = {self.times[cnt_day[variable] - 1]: data}
 
                 # other hours
                 else:
                     cnt_day[variable] += 1
-                    day['calculates'][variable][self.times[cnt_day[variable] - 1]] = data
+                    day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
 
                     # min
                     if variable == self.params_dict[73]:
-                        day['values'][variable] = Handler.get_min(day['values'][variable], data)
+                        day["values"][variable] = Handler.get_min(day["values"][variable], data)
 
                     # max
                     elif variable == self.params_dict[72]:
-                        day['values'][variable] = Handler.get_max(day['values'][variable], data)
+                        day["values"][variable] = Handler.get_max(day["values"][variable], data)
 
                     # sum (for avg)
                     else:
-                        day['values'][variable] += data
+                        day["values"][variable] += data
 
-        for variable in day['values']:
+        for variable in day["values"]:
 
             day_hours = len(self.times)
 
             # validate if there are missing data
             if (day_hours - cnt_day[variable]) != 0:
-                print('there are ' + str(day_hours - cnt_day[variable]) + ' missing values for: ' + variable)
+                print("there are " + str(day_hours - cnt_day[variable]) + " missing values for: " + variable)
 
             # calculate avg for all variables, but min-max variables,
             # whose calculated in the previous section of the algorithm
-            if day['values'][variable] != self.params_dict[72] and day['values'][variable] != self.params_dict[73]:
+            if day["values"][variable] != self.params_dict[72] and day["values"][variable] != self.params_dict[73]:
                 # calc average section
-                day['values'][variable] = Handler.calc_avg(day['values'][variable], day_hours)
+                day["values"][variable] = Handler.calc_avg(day["values"][variable], day_hours)
 
         return day
 
     def __make_header(self, request):
-        self.header['from_date'] = request['from_date']
-        self.header['to_date'] = self.to_date
-        self.header['latitude'] = request['latitude']
-        self.header['longitude'] = request['longitude']
-        self.header['grid'] = self.grid
-        self.header['format_type'] = self.format_type
+        self.header["from_date"] = request["from_date"]
+        self.header["to_date"] = self.to_date
+        self.header["latitude"] = request["latitude"]
+        self.header["longitude"] = request["longitude"]
+        self.header["grid"] = self.grid
+        self.header["format_type"] = self.format_type
 
     def __calc_day(self, single_date, location):
 
         # 2.1. Retrieve GRIB
-        filename = self.call(single_date, location)
+        filename = self.__call(single_date, location)
 
         # 2.2. Convert Data From GRIB to CDS-JSON
-        grib_cli_convert_json = 'grib_to_json ' + self.dir + filename + '.grib > ' + filename + '.json'
+        grib_cli_convert_json = "grib_to_json " + self.dir + filename + ".grib > " + filename + ".json"
         os.system(grib_cli_convert_json)
-        os.system('rm ' + filename + '.grib')
+        os.system("rm " + filename + ".grib")
 
         # 2.3. Parse CDS-JSON to JSON Response
-        cds_json = self.read(filename + '.json')
+        cds_json = self.read(filename + ".json")
         json_res = self.__parse(cds_json, single_date)
-        os.system('rm ' + self.dir + filename + '.json')
+        os.system("rm " + self.dir + filename + ".json")
 
         return json_res
 
@@ -294,7 +294,7 @@ class Handler:
 
     @staticmethod
     def date_is_valid(date):
-        # Check if the date object in given time format 'dd-mm-Y'
+        # Check if the date object in given time format "dd-mm-Y"
         if isinstance(Handler.format_date(date), datetime):
             return True
         return False

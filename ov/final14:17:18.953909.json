@@ -1,0 +1,22 @@
+{
+  "header": {
+    "from": "",
+    "to": "",
+    "latitude": 34.5,
+    "longitude": 35.0,
+    "grid": [
+      0.25,
+      0.25
+    ],
+    "from_date": "09-08-1990",
+    "to_date": "09-08-1990",
+    "format_type": "json"
+  },
+  "data": [
+    {
+      "date": "09-08-1990",
+      "values": {},
+      "calculates": {}
+    }
+  ]
+}

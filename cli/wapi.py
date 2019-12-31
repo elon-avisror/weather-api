@@ -22,7 +22,7 @@ def main():
         "longitude": float(args.longitude),
         "grid": args.grid,
         "format_type": args.format_type,
-        "variables": str(args.variables).split(",")
+        "variables": args.variables
     }
 
     handler = Handler()

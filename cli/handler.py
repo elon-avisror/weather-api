@@ -24,6 +24,20 @@ class Handler:
         "soil_temperature_level_4"
     ]
 
+    short_name_variables = [
+        "10u",
+        "10v",
+        "2t",
+        "mx2t",
+        "mn2t",
+        "stl1",
+        "stl2",
+        "stl3",
+        "stl4",
+        "ssr",
+        "tp"
+    ]
+
     times = [
         "00:00",
         "01:00",
@@ -51,27 +65,41 @@ class Handler:
         "23:00"
     ]
 
+    params_dict = {4: "specific-humidity",
+                   10: "soil_temperature_level_1",
+                   36: "10m_u_component_of_wind",
+                   37: "10m_v_component_of_wind",
+                   38: "2m_temperature",
+                   41: "soil_temperature_level_2",
+                   47: "surface_net_solar_radiation",
+                   54: "soil_temperature_level_3",
+                   72: "maximum_2m_temperature_since_previous_post_processing",
+                   73: "minimum_2m_temperature_since_previous_post_processing",
+                   99: "total_precipitation",
+                   107: "soil_temperature_level_4"}
+
+    short_name_dict = {
+        "10m_u_component_of_wind": "10u",
+        "10m_v_component_of_wind": "10v",
+        "2m_temperature": "2t",
+        "maximum_2m_temperature_since_previous_post_processing": "mx2t",
+        "minimum_2m_temperature_since_previous_post_processing": "mn2t",
+        "soil_temperature_level_1": "stl1",
+        "soil_temperature_level_2": "stl2",
+        "soil_temperature_level_3": "stl3",
+        "soil_temperature_level_4": "stl4",
+        "surface_net_solar_radiation": "ssr",
+        "total_precipitation": "tp"
+    }
+
+    required_properties = ["from_date", "latitude", "longitude"]
+    optional_properties = ["to_date", "grid", "format_type", "variables"]
+
     def __init__(self):
         self.dir = os.getcwd() + "/"
         self.ts = ""
 
-        self.params_dict = {4: "specific-humidity",
-                            10: "soil_temperature_level_1",
-                            36: "10m_u_component_of_wind",
-                            37: "10m_v_component_of_wind",
-                            38: "2m_temperature",
-                            41: "soil_temperature_level_2",
-                            47: "surface_net_solar_radiation",
-                            54: "soil_temperature_level_3",
-                            72: "maximum_2m_temperature_since_previous_post_processing",
-                            73: "minimum_2m_temperature_since_previous_post_processing",
-                            99: "total_precipitation",
-                            107: "soil_temperature_level_4"}
-
         # TODO: check latitude and longitude with types: int or float and its dynamic size
-        self.required_properties = ["from_date", "latitude", "longitude"]
-        self.optional_properties = ["to_date", "grid", "format_type", "variables"]
-
         self.to_date = ""
         self.grid = [0.25, 0.25]
 
@@ -94,7 +122,7 @@ class Handler:
     def validate(self, request):
 
         # Required properties
-        for key in self.required_properties:
+        for key in Handler.required_properties:
             try:
                 value = request[key]
             except:
@@ -111,7 +139,7 @@ class Handler:
                     return False
 
         # Optional properties
-        for key in self.optional_properties:
+        for key in Handler.optional_properties:
             try:
                 value = request[key]
             except:
@@ -142,7 +170,7 @@ class Handler:
 
                 elif key == "variables":
                     if value:
-                        if Handler.variables_is_valid(value):
+                        if Handler.variables_is_valid(str(value).split(',')):
                             self.variables = value
                         else:
                             return False
@@ -212,7 +240,7 @@ class Handler:
 
         for cds_element in cds_json:
 
-            variable = self.params_dict[cds_element["header"]["parameterNumber"]]
+            variable = Handler.params_dict[cds_element["header"]["parameterNumber"]]
 
             # is a requested variable
             if variable in self.variables:
@@ -231,11 +259,11 @@ class Handler:
                     day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
 
                     # min
-                    if variable == self.params_dict[73]:
+                    if variable == Handler.params_dict[73]:
                         day["values"][variable] = Handler.get_min(day["values"][variable], data)
 
                     # max
-                    elif variable == self.params_dict[72]:
+                    elif variable == Handler.params_dict[72]:
                         day["values"][variable] = Handler.get_max(day["values"][variable], data)
 
                     # sum (for avg)
@@ -252,7 +280,7 @@ class Handler:
 
             # calculate avg for all variables, but min-max variables,
             # whose calculated in the previous section of the algorithm
-            if day["values"][variable] != self.params_dict[72] and day["values"][variable] != self.params_dict[73]:
+            if day["values"][variable] != Handler.params_dict[72] and day["values"][variable] != Handler.params_dict[73]:
                 # calc average section
                 day["values"][variable] = Handler.calc_avg(day["values"][variable], day_hours)
 
@@ -324,7 +352,7 @@ class Handler:
     def variables_is_valid(variables):
         # Check if this variables includes in our variables
         for variable in variables:
-            if variable not in Handler.variables:
+            if variable not in Handler.variables and variable not in Handler.short_name_variables:
                 return False
         return True
 

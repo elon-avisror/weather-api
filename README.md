@@ -1,23 +1,25 @@
-# This is a Weather API, using CDS API (created by ECMWF)
+# This is a Weather API - using CDS API (from ECMWF)
 
 This is an infrastructure of getting some metrics about the weather around the globe.
 
-## Flow-Guide
+## Example 1
 
-### 1. Retrieve GRIB
+	python3 wapi.py 09-08-1990 34.5 35
 
-	python3 call.py
+## Example 2
 
-makes a call to the cds-api nd retrieve the local data in request.json file
+	python3 wapi.py 09-08-1990 34.5 35 --to_date 01-09-1990
 
-### 2. Convert Data From GRIB to CDS-JSON
+## Example 3
 
-	grib_to_json res1.grib > res1.json
+	python3 wapi.py 09-08-1990 34.5 35 --to_date 01-09-1990 --grid 0.5,0.5
+
+## Example 4
+
+	python3 wapi.py 09-08-1990 34.5 35 --to_date 01-09-1990 --grid 0.5,0.5 --format_type raw
+
+## Example 5
+
+	python3 wapi.py 09-08-1990 34.5 35 --to_date 01-09-1990 --grid 0.5,0.5 --format_type raw --variables 2t,2x
 
 
-### 3. Parse CDS-JSON to JSON Response
-
-	python3 parse.py
-
-
-### 4. TODO: Return The JSON Response

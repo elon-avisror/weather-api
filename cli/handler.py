@@ -66,17 +66,17 @@ class Handler:
     ]
 
     params_dict: dict = {4: "specific-humidity",
-                   10: "soil_temperature_level_1",
-                   36: "10m_u_component_of_wind",
-                   37: "10m_v_component_of_wind",
-                   38: "2m_temperature",
-                   41: "soil_temperature_level_2",
-                   47: "surface_net_solar_radiation",
-                   54: "soil_temperature_level_3",
-                   72: "maximum_2m_temperature_since_previous_post_processing",
-                   73: "minimum_2m_temperature_since_previous_post_processing",
-                   99: "total_precipitation",
-                   107: "soil_temperature_level_4"}
+                         10: "soil_temperature_level_1",
+                         36: "10m_u_component_of_wind",
+                         37: "10m_v_component_of_wind",
+                         38: "2m_temperature",
+                         41: "soil_temperature_level_2",
+                         47: "surface_net_solar_radiation",
+                         54: "soil_temperature_level_3",
+                         72: "maximum_2m_temperature_since_previous_post_processing",
+                         73: "minimum_2m_temperature_since_previous_post_processing",
+                         99: "total_precipitation",
+                         107: "soil_temperature_level_4"}
 
     short_name_dict: dict = {
         "10m_u_component_of_wind": "10u",
@@ -95,7 +95,7 @@ class Handler:
     required_properties: list = ["from_date", "latitude", "longitude"]
     optional_properties: list = ["to_date", "grid", "format_type", "variables"]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.dir: str = os.getcwd() + "/"
         self.ts: str = ""
 
@@ -118,13 +118,166 @@ class Handler:
             "format_type": ""
         }
 
+    def __make_header(self, request: dict) -> None:
+        self.header["from_date"] = request["from_date"]
+        self.header["to_date"] = self.to_date
+        self.header["latitude"] = request["latitude"]
+        self.header["longitude"] = request["longitude"]
+        self.header["grid"] = self.grid
+        self.header["format_type"] = self.format_type
+
+    def __calc_day(self, single_date: datetime, location: list) -> dict:
+
+        # 2.1. Retrieve GRIB
+        filename: str = self.__call(single_date, location)
+
+        # 2.2. Convert Data From GRIB to CDS-JSON
+        grib_cli_convert_json: str = "grib_to_json " + self.dir + filename + ".grib > " + filename + ".json"
+        os.system(grib_cli_convert_json)
+        os.system("rm " + filename + ".grib")
+
+        # 2.3. Parse CDS-JSON to JSON Response
+        cds_json: dict = self.read(filename + ".json")
+        if self.format_type == "json":
+            json_res: dict = self.__parse_json(cds_json, single_date)
+        else:
+            json_res: dict = self.__parse_raw(cds_json, single_date)
+        os.system("rm " + self.dir + filename + ".json")
+
+        return json_res
+
+    def __call(self, single_date: datetime, location: list) -> str:
+
+        # get the timestamp (as a file id)
+        self.ts = Handler.get_timestamp()
+        filename: str = "cds" + self.ts
+
+        # TODO: if single or pressure --> if pressure it needs property "pressure_level"
+        c = cdsapi.Client()
+
+        # API request structure: https://cds.climate.copernicus.eu/api-how-to
+        metadata: str = c.retrieve(
+            "reanalysis-era5-single-levels",
+            {
+                "product_type": "reanalysis",
+                "variable": self.variables,  # Constant
+                "year": str(single_date.year),
+                "month": str(single_date.month),
+                "day": str(single_date.day),
+                "time": self.times,
+                "grid": self.grid,
+                # Latitude/longitude grid: east-west (longitude) and north-south resolution (latitude). Default: 0.25 x 0.25
+                "area": location,  # North, West, South, East. Default: global
+                "format": "grib"
+            },
+            filename + ".grib")
+
+        return filename
+
+    def __parse_json(self, cds_json: dict, single_date: datetime) -> dict:
+
+        day: dict = {
+            "date": single_date.strftime(self.date_format),
+            "values": {}
+        }
+
+        cnt_day: dict = {}
+
+        # calculation section
+        for cds_element in cds_json:
+
+            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+
+            # is a requested variable
+            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+
+                data: float = cds_element["data"][0]
+
+                # first hour
+                if variable not in day["values"]:
+                    cnt_day[variable]: int = 1
+                    day["values"][variable]: float = data
+
+                # other hours
+                else:
+                    cnt_day[variable] += 1
+
+                    # min
+                    if variable == Handler.params_dict[73]:
+                        day["values"][variable] = Handler.get_min(day["values"][variable], data)
+
+                    # max
+                    elif variable == Handler.params_dict[72]:
+                        day["values"][variable] = Handler.get_max(day["values"][variable], data)
+
+                    # sum (for avg)
+                    else:
+                        day["values"][variable] += data
+
+        # validation section
+        for variable in day["values"]:
+
+            day_hours: int = len(self.times)
+
+            # validate if there are missing data
+            if (day_hours - cnt_day[variable]) != 0:
+                print("there are " + str(day_hours - cnt_day[variable]) + " missing values for: " + variable)
+
+            # calculate avg for all variables, but min-max variables,
+            # whose calculated in the previous section of the algorithm
+            if variable != Handler.params_dict[72] and variable != Handler.params_dict[73]:
+                # calc average section
+                day["values"][variable] = Handler.calc_avg(day["values"][variable], day_hours)
+
+        return day
+
+    def __parse_raw(self, cds_json: dict, single_date: datetime) -> dict:
+
+        day: dict = {
+            "date": single_date.strftime(self.date_format),
+            "calculates": {}
+        }
+
+        cnt_day: dict = {}
+
+        # insert section
+        for cds_element in cds_json:
+
+            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+
+            # is a requested variable
+            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+
+                data: float = cds_element["data"][0]
+
+                # first hour
+                if variable not in day["calculates"]:
+                    cnt_day[variable]: int = 1
+                    day["calculates"][variable] = {self.times[cnt_day[variable] - 1]: data}
+
+                # other hours
+                else:
+                    cnt_day[variable] += 1
+                    day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
+
+        # validation section
+        for variable in day["calculates"]:
+
+            day_hours: int = len(self.times)
+
+            # validate if there are missing data
+            if (day_hours - cnt_day[variable]) != 0:
+                print("there are " + str(day_hours - cnt_day[variable]) + " missing values for: " + variable)
+
+        return day
+
     # Structure JSON validation
     def validate(self, request: dict) -> bool:
 
         # Required properties
         for key in Handler.required_properties:
             try:
-                value: str | float = request[key]
+                value: str or float = request[key]
             except Exception:
                 raise Exception("there is no option to not specified '" + key + "' because it's required!")
             else:
@@ -181,34 +334,6 @@ class Handler:
         self.__make_header(request)
         return True
 
-    def __call(self, single_date, location):
-
-        # get the timestamp (as a file id)
-        self.ts = Handler.get_timestamp()
-        filename = "cds" + self.ts
-
-        # TODO: if single or pressure --> if pressure it needs property "pressure_level"
-        c = cdsapi.Client()
-
-        # API request structure: https://cds.climate.copernicus.eu/api-how-to
-        metadata = c.retrieve(
-            "reanalysis-era5-single-levels",
-            {
-                "product_type": "reanalysis",
-                "variable": self.variables,  # Constant
-                "year": str(single_date.year),
-                "month": str(single_date.month),
-                "day": str(single_date.day),
-                "time": self.times,
-                "grid": self.grid,
-                # Latitude/longitude grid: east-west (longitude) and north-south resolution (latitude). Default: 0.25 x 0.25
-                "area": location,  # North, West, South, East. Default: global
-                "format": "grib"
-            },
-            filename + ".grib")
-
-        return filename
-
     def calc_range(self, start_date: str, end_date: str, location: list) -> dict:
         json_res: dict = {
             "header": self.header,
@@ -238,89 +363,6 @@ class Handler:
         else:
             return out_filename
 
-    def __parse(self, cds_json: dict, single_date: datetime) -> dict:
-
-        day: dict = {
-            "date": single_date.strftime(self.date_format),
-            "values": {},
-            "calculates": {}
-        }
-
-        cnt_day: dict = {}
-
-        for cds_element in cds_json:
-
-            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
-
-            # is a requested variable
-            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
-
-                data: float = cds_element["data"][0]
-
-                # first hour
-                if variable not in day["values"]:
-                    cnt_day[variable]: int = 1
-                    day["values"][variable]: float = data
-                    day["calculates"][variable]: dict = {self.times[cnt_day[variable] - 1]: data}
-
-                # other hours
-                else:
-                    cnt_day[variable] += 1
-                    day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
-
-                    # min
-                    if variable == Handler.params_dict[73]:
-                        day["values"][variable] = Handler.get_min(day["values"][variable], data)
-
-                    # max
-                    elif variable == Handler.params_dict[72]:
-                        day["values"][variable] = Handler.get_max(day["values"][variable], data)
-
-                    # sum (for avg)
-                    else:
-                        day["values"][variable] += data
-
-        for variable in day["values"]:
-
-            day_hours: int = len(self.times)
-
-            # validate if there are missing data
-            if (day_hours - cnt_day[variable]) != 0:
-                print("there are " + str(day_hours - cnt_day[variable]) + " missing values for: " + variable)
-
-            # calculate avg for all variables, but min-max variables,
-            # whose calculated in the previous section of the algorithm
-            if day["values"][variable] != Handler.params_dict[72] and day["values"][variable] != Handler.params_dict[73]:
-                # calc average section
-                day["values"][variable] = Handler.calc_avg(day["values"][variable], day_hours)
-
-        return day
-
-    def __make_header(self, request: dict):
-        self.header["from_date"] = request["from_date"]
-        self.header["to_date"] = self.to_date
-        self.header["latitude"] = request["latitude"]
-        self.header["longitude"] = request["longitude"]
-        self.header["grid"] = self.grid
-        self.header["format_type"] = self.format_type
-
-    def __calc_day(self, single_date: datetime, location: list) -> dict:
-
-        # 2.1. Retrieve GRIB
-        filename: str = self.__call(single_date, location)
-
-        # 2.2. Convert Data From GRIB to CDS-JSON
-        grib_cli_convert_json: str = "grib_to_json " + self.dir + filename + ".grib > " + filename + ".json"
-        os.system(grib_cli_convert_json)
-        os.system("rm " + filename + ".grib")
-
-        # 2.3. Parse CDS-JSON to JSON Response
-        cds_json: dict = self.read(filename + ".json")
-        json_res: dict = self.__parse(cds_json, single_date)
-        os.system("rm " + self.dir + filename + ".json")
-
-        return json_res
-
     @staticmethod
     def date_range(start_date: str, end_date: str) -> datetime:
         for n in range(int((end_date - start_date).days) + 1):
@@ -338,7 +380,7 @@ class Handler:
         return False
 
     @staticmethod
-    def coordinate_is_valid(coordinate: int | float) -> bool:
+    def coordinate_is_valid(coordinate: float) -> bool:
         # Check if it is a number
         if isinstance(coordinate, (int, float)):
             return True
@@ -383,5 +425,5 @@ class Handler:
         return value / hours
 
     @staticmethod
-    def get_timestamp():
+    def get_timestamp() -> str:
         return datetime.now().time().strftime(Handler.timestamp_format)

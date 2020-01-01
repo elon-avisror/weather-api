@@ -6,7 +6,7 @@ def main():
     parser = argparse.ArgumentParser(description="Welcome to Weather API - follow the instructions to get started...")
     parser.add_argument("from_date", nargs="?", help="Date in format 'dd-mm-Y' e.g. '09-08-1990''")
     parser.add_argument("--to_date", nargs="?",
-                        help="Date in format 'dd-mm-Y' e.g. '01-09-1990'' (defaults 'from_date')")
+                        help="Date in format 'dd-mm-Y' e.g. '01-09-1990' (defaults 'from_date')")
     parser.add_argument("latitude", nargs="?", help="Coordinate in format number e.g. '34.5'")
     parser.add_argument("longitude", nargs="?", help="Coordinate in format number e.g. '35'")
     parser.add_argument("--grid", nargs="?", help="Grid size e.g. '0.5,0.5' (defaults '0.25,0.25')")
@@ -38,14 +38,11 @@ def main():
         json_response: dict = handler.calc_range(start_date, end_date, location)
 
         # 3. Write The Response to JSON File
-        if handler.format_type == "json":
-            filename: str = handler.save(json_response)
+        filename: str = handler.save(json_response)
 
-        # to raw option
-        else:
-            filename: list = []
-            for day in json_response["data"]:
-                filename.append(handler.save(day["calculates"]))
+        if handler.format_type == "raw":
+            for day_data in json_response["data"]:
+                print(day_data["calculates"])
 
         print("Successful, for the " + handler.format_type + " results see " + handler.dir + str(filename))
 

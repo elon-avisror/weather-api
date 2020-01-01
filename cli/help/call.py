@@ -9,7 +9,8 @@ c.retrieve(
         'format': 'grib',
         'variable': [
             '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_temperature',
-            'maximum_2m_temperature_since_previous_post_processing', 'minimum_2m_temperature_since_previous_post_processing', 'soil_temperature_level_1',
+            'maximum_2m_temperature_since_previous_post_processing',
+            'minimum_2m_temperature_since_previous_post_processing', 'soil_temperature_level_1',
             'soil_temperature_level_2', 'soil_temperature_level_3', 'soil_temperature_level_4',
             'surface_net_solar_radiation', 'total_precipitation',
         ],
@@ -26,7 +27,6 @@ c.retrieve(
             '18:00', '19:00', '20:00',
             '21:00', '22:00', '23:00',
         ],
-	'area': [34.5, 35, 34.5, 35]
+        'area': [34.5, 35, 34.5, 35]
     },
     'download.grib')
-

@@ -20,6 +20,6 @@ This is an infrastructure of getting some metrics about the weather around the g
 
 ## Example 5
 
-	python3 wapi.py 09-08-1990 34.5 35 --to_date 01-09-1990 --grid 0.5,0.5 --format_type raw --variables 2t,2x
+	python3 wapi.py 09-08-1990 34.5 35 --to_date 01-09-1990 --grid 0.5,0.5 --format_type raw --variables 2t,mx2t
 
 

@@ -136,7 +136,7 @@ class Handler:
                     if not Handler.coordinate_is_valid(value):
                         return False
                 else:
-                    return False
+                    raise Exception("there are some required properties that not as we expect!")
 
         # Optional properties
         for key in Handler.optional_properties:
@@ -170,12 +170,13 @@ class Handler:
 
                 elif key == "variables":
                     if value:
-                        if Handler.variables_is_valid(str(value).split(',')):
-                            self.variables = value
+                        variables = str(value).split(",")
+                        if Handler.variables_is_valid(variables):
+                            self.variables = variables
                         else:
                             return False
                 else:
-                    return False
+                    raise Exception("there are some optional properties that not as we expect!")
 
         self.__make_header(request)
         return True
@@ -219,14 +220,23 @@ class Handler:
         return json_res
 
     def read(self, filename):
-        return json.loads(open(self.dir + filename).read())
+        try:
+            file = json.loads(open(self.dir + filename).read())
+        except:
+            raise Exception("cannot read from " + self.dir + filename + " file!")
+        else:
+            return file
 
     def save(self, data):
         self.ts = Handler.get_timestamp()
         out_filename = "final" + self.ts + ".json"
-        with open(self.dir + out_filename, "w") as outfile:
-            json.dump(data, outfile)
-        return out_filename
+        try:
+            with open(self.dir + out_filename, "w") as outfile:
+                json.dump(data, outfile)
+        except Exception:
+            raise Exception("cannot write to " + self.dir + out_filename + " file!")
+        else:
+            return out_filename
 
     def __parse(self, cds_json, single_date):
 
@@ -243,7 +253,7 @@ class Handler:
             variable = Handler.params_dict[cds_element["header"]["parameterNumber"]]
 
             # is a requested variable
-            if variable in self.variables:
+            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
 
                 data = cds_element["data"][0]
 

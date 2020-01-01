@@ -2,7 +2,6 @@ import argparse
 from handler import Handler
 
 
-# TODO: this will change with the implementation of cli
 def main():
     parser = argparse.ArgumentParser(description="Welcome to Weather API - follow the instructions to get started...")
     parser.add_argument("from_date", nargs="?", help="Date in format 'dd-mm-Y' e.g. '09-08-1990''")
@@ -32,24 +31,23 @@ def main():
         print("The request.json file structure is valid!")
 
         # 2. Get Range of Dates
-        start_date = Handler.format_date(handler.header["from_date"])
-        end_date = Handler.format_date(handler.header["to_date"])
-        location = [handler.header["latitude"], request["longitude"], request["latitude"], request["longitude"]]
+        start_date: str = Handler.format_date(handler.header["from_date"])
+        end_date: str = Handler.format_date(handler.header["to_date"])
+        location: list = [handler.header["latitude"], request["longitude"], request["latitude"], request["longitude"]]
 
-        json_response = handler.calc_range(start_date, end_date, location)
+        json_response: dict = handler.calc_range(start_date, end_date, location)
 
         # 3. Write The Response to JSON File
         if handler.format_type == "json":
-            filename = handler.save(json_response)
+            filename: str = handler.save(json_response)
 
         # to raw option
         else:
-            filename = []
+            filename: list = []
             for day in json_response["data"]:
                 filename.append(handler.save(day["calculates"]))
 
         print("Successful, for the " + handler.format_type + " results see " + handler.dir + str(filename))
-
 
     else:
         print("The structure of the request.json is not valid!")

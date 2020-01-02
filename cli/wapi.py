@@ -38,13 +38,13 @@ def main():
         json_response: dict = handler.calc_range(start_date, end_date, location)
 
         # 3. Write The Response to JSON File
-        filename: str = handler.save(json_response)
+        if handler.format_type == "json":
 
-        if handler.format_type == "raw":
-            for day_data in json_response["data"]:
-                print(day_data["calculates"])
+            filename: str = handler.save(json_response)
+            print("Successful, for the " + handler.format_type + " results see " + handler.dir + str(filename))
 
-        print("Successful, for the " + handler.format_type + " results see " + handler.dir + str(filename))
+        else:
+            print("Finish, calculating for the " + handler.format_type + " results")
 
     else:
         print("The structure of the request.json is not valid!")

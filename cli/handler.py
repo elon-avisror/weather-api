@@ -260,6 +260,9 @@ class Handler:
                     cnt_day[variable] += 1
                     day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
 
+        # start printing calculates
+        print("date: " + day["date"])
+
         # validation section
         for variable in day["calculates"]:
 
@@ -268,6 +271,12 @@ class Handler:
             # validate if there are missing data
             if (day_hours - cnt_day[variable]) != 0:
                 print("there are " + str(day_hours - cnt_day[variable]) + " missing values for: " + variable)
+
+            # for raw output
+            else:
+                print(variable)
+                for i in range(day_hours):
+                    print(self.times[i] + ": " + str(day["calculates"][variable][self.times[i]]))
 
         return day
 

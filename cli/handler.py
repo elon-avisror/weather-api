@@ -9,6 +9,25 @@ class Handler:
     timestamp_format: str = "%H:%M:%S.%f"
     format_types: list = ["json", "raw"]
 
+    data_sets_variables: dict = {
+        "reanalysis-era5-single-levels": [
+            "soil_temperature_level_1",
+            "10m_u_component_of_wind",
+            "10m_v_component_of_wind",
+            "2m_temperature",
+            "soil_temperature_level_2",
+            "surface_net_solar_radiation",
+            "soil_temperature_level_3",
+            "maximum_2m_temperature_since_previous_post_processing",
+            "minimum_2m_temperature_since_previous_post_processing",
+            "total_precipitation",
+            "soil_temperature_level_4"
+        ],
+        "reanalysis-era5-pressure-levels": [
+            "specific_humidity"
+        ]
+    }
+
     variables: list = [
         "specific_humidity",
         "soil_temperature_level_1",
@@ -66,7 +85,7 @@ class Handler:
         "23:00"
     ]
 
-    params_dict: dict = {4: "specific-humidity",
+    params_dict: dict = {4: "specific_humidity",
                          10: "soil_temperature_level_1",
                          36: "10m_u_component_of_wind",
                          37: "10m_v_component_of_wind",
@@ -110,6 +129,10 @@ class Handler:
 
         # default "all" variables
         self.variables: list = Handler.variables
+        self.data_sets_variables: dict = {
+            "reanalysis-era5-single-levels": [],
+            "reanalysis-era5-pressure-levels": []
+        }
 
         self.header: dict = {
             "from_date": "",
@@ -130,47 +153,45 @@ class Handler:
 
     def __calc_day(self, single_date: datetime, location: list) -> dict:
 
+        file_names: list = []
+        cds_json: list = []
 
         # 2.1. Retrieve GRIB
-        filename1 = self.__call(Handler.get_timestamp(), single_date, location, ["soil_temperature_level_1"], "reanalysis-era5-single-levels")
-        filename2 = self.__call(Handler.get_timestamp() + "1", single_date, location, ["specific_humidity"], "reanalysis-era5-pressure-levels", "pressure_level")
+        for data_set in Handler.data_sets_variables:
+            file_names.append(self.__call(single_date, location, data_set))
 
         # 2.2. Convert Data From GRIB to CDS-JSON
-        grib_cli_convert_json1: str = "grib_to_json " + self.dir + filename1 + ".grib > " + filename1 + ".json"
-        grib_cli_convert_json2: str = "grib_to_json " + self.dir + filename2 + ".grib > " + filename2 + ".json"
+        for file_name in file_names:
+            grib_cli_convert_json: str = "grib_to_json " + self.dir + file_name + ".grib > " + file_name + ".json"
+            os.system(grib_cli_convert_json)
+            os.system("rm " + file_name + ".grib")
 
-        os.system(grib_cli_convert_json1)
-        os.system(grib_cli_convert_json2)
+            # 2.3. Parse CDS-JSON to JSON Response
+            cds_json.append(self.read(file_name + ".json"))
 
-        os.system("rm " + filename1 + ".grib")
-        os.system("rm " + filename2 + ".grib")
-
-        # 2.3. Parse CDS-JSON to JSON Response
-        cds_json1: dict = self.read(filename1 + ".json")
-        cds_json2: dict = self.read(filename1 + ".json")
+        day: dict = {
+            "date": single_date.strftime(self.date_format)
+        }
 
         if self.format_type == "json":
-            day: dict = {
-                "date": single_date.strftime(self.date_format),
-                "values": {}
-            }
-            json_res: dict = self.__parse_json(day, cds_json1, cds_json2)
+            json_res: dict = self.__parse_json(day, cds_json)
         else:
-            day: dict = {
-                "date": single_date.strftime(self.date_format),
-                "calculates": {}
-            }
-            json_res: dict = self.__parse_raw(day, cds_json1, cds_json2)
+            json_res: dict = self.__parse_raw(day, cds_json)
 
-        os.system("rm " + self.dir + filename1 + ".json")
-        os.system("rm " + self.dir + filename2 + ".json")
+        for file_name in file_names:
+            os.system("rm " + self.dir + file_name + ".json")
 
         return json_res
 
-    def __call(self, ts: str, single_date: datetime, location: list, variables: list, data_set: str) -> str:
+    @staticmethod
+    def intersection(lst1, lst2):
+        lst3 = [value for value in lst1 if value in lst2]
+        return lst3
+
+    def __call(self, single_date: datetime, location: list, data_set: str) -> str:
 
         # get the timestamp (as a file id)
-        self.ts = ts
+        self.ts = Handler.get_timestamp()
         filename: str = "cds" + self.ts
 
         # TODO: if single or pressure --> if pressure it needs property "pressure_level"
@@ -181,13 +202,16 @@ class Handler:
             data_set,
             {
                 "product_type": "reanalysis",
-                "variable": variables,  # Constant
+                "variable": self.data_sets_variables[data_set],
+                # This data set variables intersection (&) what the user wants
                 "year": str(single_date.year),
                 "month": str(single_date.month),
                 "day": str(single_date.day),
                 "time": self.times,
                 "grid": self.grid,
-                # Latitude/longitude grid: east-west (longitude) and north-south resolution (latitude). Default: 0.25 x 0.25
+                "pressure_level": "1",
+                # Latitude/longitude grid: east-west (longitude) and north-south resolution (latitude)
+                # Default: 0.25 x 0.25
                 "area": location,  # North, West, South, East. Default: global
                 "format": "grib"
             },
@@ -195,71 +219,43 @@ class Handler:
 
         return filename
 
-    def __parse_json(self, day: dict, cds_json1: dict, cds_json2: dict) -> dict:
+    def __parse_json(self, day: dict, *args: dict) -> dict:
 
+        day["values"] = {}
         cnt_day: dict = {}
 
-        # calculation section
-        for cds_element in cds_json1:
-
-            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
-
-            # is a requested variable
-            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
-
-                data: float = cds_element["data"][0]
-
-                # first hour
-                if variable not in day["values"]:
-                    cnt_day[variable]: int = 1
-                    day["values"][variable]: float = data
-
-                # other hours
-                else:
-                    cnt_day[variable] += 1
-
-                    # min
-                    if variable == Handler.params_dict[73]:
-                        day["values"][variable] = Handler.get_min(day["values"][variable], data)
-
-                    # max
-                    elif variable == Handler.params_dict[72]:
-                        day["values"][variable] = Handler.get_max(day["values"][variable], data)
-
-                    # sum (for avg)
-                    else:
-                        day["values"][variable] += data
+        for cds_json in args[0]:
 
             # calculation section
-        for cds_element in cds_json2:
+            for cds_element in cds_json:
 
-            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+                variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
 
-            # is a requested variable
-            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+                # is a requested variable
+                if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
 
-                data: float = cds_element["data"][0]
+                    data: float = cds_element["data"][0]
 
-                # first hour
-                if variable not in day["values"]:
-                    cnt_day[variable]: int = 1
-                    day["values"][variable]: float = data
+                    # first hour
+                    if variable not in day["values"]:
+                        cnt_day[variable]: int = 1
+                        day["values"][variable]: float = data
 
-                # other hours
-                else:
-                    cnt_day[variable] += 1
-
-                    # min
-                    if variable == Handler.params_dict[73]:
-                        day["values"][variable] = Handler.get_min(day["values"][variable], data)
-
-                    # max
-                    elif variable == Handler.params_dict[72]:
-                        day["values"][variable] = Handler.get_max(day["values"][variable], data)
-
-                    # sum (for avg)
+                    # other hours
                     else:
-                        day["values"][variable] += data
+                        cnt_day[variable] += 1
+
+                        # min
+                        if variable == Handler.params_dict[73]:
+                            day["values"][variable] = Handler.get_min(day["values"][variable], data)
+
+                        # max
+                        elif variable == Handler.params_dict[72]:
+                            day["values"][variable] = Handler.get_max(day["values"][variable], data)
+
+                        # sum (for avg)
+                        else:
+                            day["values"][variable] += data
 
         # validation section
         for variable in day["values"]:
@@ -278,49 +274,32 @@ class Handler:
 
         return day
 
-    def __parse_raw(self, day: dict, cds_json1: dict, cds_json2: dict) -> dict:
+    def __parse_raw(self, day: dict, *args: dict) -> dict:
 
+        day["calculates"] = {}
         cnt_day: dict = {}
 
-        # insert section
-        for cds_element in cds_json1:
+        for cds_json in args[0]:
 
-            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+            # insert section
+            for cds_element in cds_json:
 
-            # is a requested variable
-            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+                variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
 
-                data: float = cds_element["data"][0]
+                # is a requested variable
+                if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
 
-                # first hour
-                if variable not in day["calculates"]:
-                    cnt_day[variable]: int = 1
-                    day["calculates"][variable] = {self.times[cnt_day[variable] - 1]: data}
+                    data: float = cds_element["data"][0]
 
-                # other hours
-                else:
-                    cnt_day[variable] += 1
-                    day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
+                    # first hour
+                    if variable not in day["calculates"]:
+                        cnt_day[variable]: int = 1
+                        day["calculates"][variable] = {self.times[cnt_day[variable] - 1]: data}
 
-        # insert section
-        for cds_element in cds_json2:
-
-            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
-
-            # is a requested variable
-            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
-
-                data: float = cds_element["data"][0]
-
-                # first hour
-                if variable not in day["calculates"]:
-                    cnt_day[variable]: int = 1
-                    day["calculates"][variable] = {self.times[cnt_day[variable] - 1]: data}
-
-                # other hours
-                else:
-                    cnt_day[variable] += 1
-                    day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
+                    # other hours
+                    else:
+                        cnt_day[variable] += 1
+                        day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
 
         # start printing calculates
         print("date: " + day["date"])
@@ -397,6 +376,11 @@ class Handler:
                         variables = str(value).split(",")
                         if Handler.variables_is_valid(variables):
                             self.variables = variables
+
+                            # update the data sets variables for the calls to cds-api
+                            for data_set in Handler.data_sets_variables:
+                                for variable in variables:
+                                    self.data_sets_variables[data_set].append(variable)
                         else:
                             return False
                 else:

@@ -25,6 +25,7 @@ class Handler:
     ]
 
     short_name_variables: list = [
+        "q",
         "10u",
         "10v",
         "2t",
@@ -79,6 +80,7 @@ class Handler:
                          107: "soil_temperature_level_4"}
 
     short_name_dict: dict = {
+        "specific_humidity": "q",
         "10m_u_component_of_wind": "10u",
         "10m_v_component_of_wind": "10v",
         "2m_temperature": "2t",
@@ -128,28 +130,47 @@ class Handler:
 
     def __calc_day(self, single_date: datetime, location: list) -> dict:
 
+
         # 2.1. Retrieve GRIB
-        filename: str = self.__call(single_date, location)
+        filename1 = self.__call(Handler.get_timestamp(), single_date, location, ["soil_temperature_level_1"], "reanalysis-era5-single-levels")
+        filename2 = self.__call(Handler.get_timestamp() + "1", single_date, location, ["specific_humidity"], "reanalysis-era5-pressure-levels", "pressure_level")
 
         # 2.2. Convert Data From GRIB to CDS-JSON
-        grib_cli_convert_json: str = "grib_to_json " + self.dir + filename + ".grib > " + filename + ".json"
-        os.system(grib_cli_convert_json)
-        os.system("rm " + filename + ".grib")
+        grib_cli_convert_json1: str = "grib_to_json " + self.dir + filename1 + ".grib > " + filename1 + ".json"
+        grib_cli_convert_json2: str = "grib_to_json " + self.dir + filename2 + ".grib > " + filename2 + ".json"
+
+        os.system(grib_cli_convert_json1)
+        os.system(grib_cli_convert_json2)
+
+        os.system("rm " + filename1 + ".grib")
+        os.system("rm " + filename2 + ".grib")
 
         # 2.3. Parse CDS-JSON to JSON Response
-        cds_json: dict = self.read(filename + ".json")
+        cds_json1: dict = self.read(filename1 + ".json")
+        cds_json2: dict = self.read(filename1 + ".json")
+
         if self.format_type == "json":
-            json_res: dict = self.__parse_json(cds_json, single_date)
+            day: dict = {
+                "date": single_date.strftime(self.date_format),
+                "values": {}
+            }
+            json_res: dict = self.__parse_json(day, cds_json1, cds_json2)
         else:
-            json_res: dict = self.__parse_raw(cds_json, single_date)
-        os.system("rm " + self.dir + filename + ".json")
+            day: dict = {
+                "date": single_date.strftime(self.date_format),
+                "calculates": {}
+            }
+            json_res: dict = self.__parse_raw(day, cds_json1, cds_json2)
+
+        os.system("rm " + self.dir + filename1 + ".json")
+        os.system("rm " + self.dir + filename2 + ".json")
 
         return json_res
 
-    def __call(self, single_date: datetime, location: list) -> str:
+    def __call(self, ts: str, single_date: datetime, location: list, variables: list, data_set: str) -> str:
 
         # get the timestamp (as a file id)
-        self.ts = Handler.get_timestamp()
+        self.ts = ts
         filename: str = "cds" + self.ts
 
         # TODO: if single or pressure --> if pressure it needs property "pressure_level"
@@ -157,10 +178,10 @@ class Handler:
 
         # API request structure: https://cds.climate.copernicus.eu/api-how-to
         metadata: str = c.retrieve(
-            "reanalysis-era5-single-levels",
+            data_set,
             {
                 "product_type": "reanalysis",
-                "variable": self.variables,  # Constant
+                "variable": variables,  # Constant
                 "year": str(single_date.year),
                 "month": str(single_date.month),
                 "day": str(single_date.day),
@@ -174,17 +195,43 @@ class Handler:
 
         return filename
 
-    def __parse_json(self, cds_json: dict, single_date: datetime) -> dict:
-
-        day: dict = {
-            "date": single_date.strftime(self.date_format),
-            "values": {}
-        }
+    def __parse_json(self, day: dict, cds_json1: dict, cds_json2: dict) -> dict:
 
         cnt_day: dict = {}
 
         # calculation section
-        for cds_element in cds_json:
+        for cds_element in cds_json1:
+
+            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+
+            # is a requested variable
+            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+
+                data: float = cds_element["data"][0]
+
+                # first hour
+                if variable not in day["values"]:
+                    cnt_day[variable]: int = 1
+                    day["values"][variable]: float = data
+
+                # other hours
+                else:
+                    cnt_day[variable] += 1
+
+                    # min
+                    if variable == Handler.params_dict[73]:
+                        day["values"][variable] = Handler.get_min(day["values"][variable], data)
+
+                    # max
+                    elif variable == Handler.params_dict[72]:
+                        day["values"][variable] = Handler.get_max(day["values"][variable], data)
+
+                    # sum (for avg)
+                    else:
+                        day["values"][variable] += data
+
+            # calculation section
+        for cds_element in cds_json2:
 
             variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
 
@@ -231,17 +278,32 @@ class Handler:
 
         return day
 
-    def __parse_raw(self, cds_json: dict, single_date: datetime) -> dict:
-
-        day: dict = {
-            "date": single_date.strftime(self.date_format),
-            "calculates": {}
-        }
+    def __parse_raw(self, day: dict, cds_json1: dict, cds_json2: dict) -> dict:
 
         cnt_day: dict = {}
 
         # insert section
-        for cds_element in cds_json:
+        for cds_element in cds_json1:
+
+            variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+
+            # is a requested variable
+            if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+
+                data: float = cds_element["data"][0]
+
+                # first hour
+                if variable not in day["calculates"]:
+                    cnt_day[variable]: int = 1
+                    day["calculates"][variable] = {self.times[cnt_day[variable] - 1]: data}
+
+                # other hours
+                else:
+                    cnt_day[variable] += 1
+                    day["calculates"][variable][self.times[cnt_day[variable] - 1]] = data
+
+        # insert section
+        for cds_element in cds_json2:
 
             variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
 

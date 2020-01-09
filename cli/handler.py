@@ -3,8 +3,11 @@ import json
 import cdsapi
 from datetime import datetime, timedelta
 
-with open('.config.json') as json_data_file:
-    config = json.load(json_data_file)
+try:
+    with open(".config.json") as json_data_file:
+        config = json.load(json_data_file)
+except Exception:
+    raise Exception("can't find .config.json file or it's a broken file!")
 
 
 class Handler:
@@ -12,11 +15,13 @@ class Handler:
     timestamp_format: str = config["timestamp_format"]
     format_types: list = config["format_types"]
     data_sets_variables: dict = config["data_sets_variables"]
+    data_sets_short_names: dict = config["data_sets_short_names"]
     variables: list = config["variables"]
     short_name_variables: list = config["short_name_variables"]
     times: list = config["times"]
-    params_dict: dict = config["params_dict"]  # TODO: handle from string to number
-    short_name_dict: dict = config["short_name_variables"]
+    params_dict: dict = config["params_dict"]
+    name_short_dict: dict = config["name_short_dict"]
+    short_name_dict: dict = config["short_name_dict"]
     required_properties: list = config["required_properties"]
     optional_properties: list = config["optional_properties"]
 
@@ -37,7 +42,10 @@ class Handler:
             "reanalysis-era5-single-levels": [],
             "reanalysis-era5-pressure-levels": []
         }
-
+        self.data_sets_short_names: dict = {
+            "reanalysis-era5-single-levels": [],
+            "reanalysis-era5-pressure-levels": []
+        }
         self.header: dict = {
             "from_date": "",
             "to_date": "",
@@ -61,8 +69,9 @@ class Handler:
         cds_json: list = []
 
         # 2.1. Retrieve GRIB
-        for data_set in Handler.data_sets_variables:
-            file_names.append(self.__call(single_date, location, data_set))
+        for data_set in self.data_sets_variables:
+            if self.data_sets_variables[data_set]:
+                file_names.append(self.__call(single_date, location, data_set))
 
         # 2.2. Convert Data From GRIB to CDS-JSON
         for file_name in file_names:
@@ -86,11 +95,6 @@ class Handler:
             os.system("rm " + self.dir + file_name + ".json")
 
         return json_res
-
-    @staticmethod
-    def intersection(lst1, lst2):
-        lst3 = [value for value in lst1 if value in lst2]
-        return lst3
 
     def __call(self, single_date: datetime, location: list, data_set: str) -> str:
 
@@ -133,10 +137,10 @@ class Handler:
             # calculation section
             for cds_element in cds_json:
 
-                variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+                variable: str = Handler.params_dict[str(cds_element["header"]["parameterNumber"])]
 
                 # is a requested variable
-                if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+                if variable in self.variables or Handler.name_short_dict[variable] in self.variables:
 
                     data: float = cds_element["data"][0]
 
@@ -150,11 +154,11 @@ class Handler:
                         cnt_day[variable] += 1
 
                         # min
-                        if variable == Handler.params_dict[73]:
+                        if variable == Handler.params_dict["73"]:
                             day["values"][variable] = Handler.get_min(day["values"][variable], data)
 
                         # max
-                        elif variable == Handler.params_dict[72]:
+                        elif variable == Handler.params_dict["72"]:
                             day["values"][variable] = Handler.get_max(day["values"][variable], data)
 
                         # sum (for avg)
@@ -172,7 +176,7 @@ class Handler:
 
             # calculate avg for all variables, but min-max variables,
             # whose calculated in the previous section of the algorithm
-            if variable != Handler.params_dict[72] and variable != Handler.params_dict[73]:
+            if variable != Handler.params_dict["72"] and variable != Handler.params_dict["73"]:
                 # calc average section
                 day["values"][variable] = Handler.calc_avg(day["values"][variable], day_hours)
 
@@ -188,10 +192,10 @@ class Handler:
             # insert section
             for cds_element in cds_json:
 
-                variable: str = Handler.params_dict[cds_element["header"]["parameterNumber"]]
+                variable: str = Handler.params_dict[str(cds_element["header"]["parameterNumber"])]
 
                 # is a requested variable
-                if variable in self.variables or Handler.short_name_dict[variable] in self.variables:
+                if variable in self.variables or Handler.name_short_dict[variable] in self.variables:
 
                     data: float = cds_element["data"][0]
 
@@ -276,17 +280,27 @@ class Handler:
                             return False
 
                 elif key == "variables":
+                    # there are variables
                     if value:
                         variables = str(value).split(",")
+                        # update the data sets variables for the calls to cds-api
                         if Handler.variables_is_valid(variables):
-                            self.variables = variables
 
-                            # update the data sets variables for the calls to cds-api
+                            self.variables = variables
                             for data_set in Handler.data_sets_variables:
-                                for variable in variables:
-                                    self.data_sets_variables[data_set].append(variable)
+                                for variable in self.variables:
+                                    if variable in Handler.data_sets_variables[data_set]:
+                                        self.data_sets_variables[data_set].append(variable)
+                                    elif variable in Handler.data_sets_short_names[data_set]:
+                                        self.data_sets_variables[data_set].append(Handler.short_name_dict[variable])
+
                         else:
                             return False
+
+                    # no variables was sent by the user
+                    else:
+                        self.data_sets_variables = Handler.data_sets_variables
+                        self.data_sets_short_names = Handler.data_sets_short_names
                 else:
                     raise Exception("there are some optional properties that not as we expect!")
 
@@ -386,7 +400,3 @@ class Handler:
     @staticmethod
     def get_timestamp() -> str:
         return datetime.now().time().strftime(Handler.timestamp_format)
-
-
-obj = Handler()
-print(obj.params_dict)

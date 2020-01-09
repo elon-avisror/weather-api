@@ -23,6 +23,24 @@
       "specific_humidity"
     ]
   },
+  "data_sets_short_names": {
+    "reanalysis-era5-single-levels": [
+      "stl1",
+      "10u",
+      "10v",
+      "2t",
+      "stl2",
+      "ssr",
+      "stl3",
+      "mx2t",
+      "mn2t",
+      "tp",
+      "stl4"
+    ],
+    "reanalysis-era5-pressure-levels": [
+      "q"
+    ]
+  },
   "variables": [
     "specific_humidity",
     "soil_temperature_level_1",
@@ -91,7 +109,7 @@
     "99": "total_precipitation",
     "107": "soil_temperature_level_4"
   },
-  "short_name_dict": {
+  "name_short_dict": {
     "specific_humidity": "q",
     "10m_u_component_of_wind": "10u",
     "10m_v_component_of_wind": "10v",
@@ -104,6 +122,20 @@
     "soil_temperature_level_4": "stl4",
     "surface_net_solar_radiation": "ssr",
     "total_precipitation": "tp"
+  },
+  "short_name_dict": {
+    "q": "specific_humidity",
+    "10u": "10m_u_component_of_wind",
+    "10v": "10m_v_component_of_wind",
+    "2t": "2m_temperature",
+    "mx2t": "maximum_2m_temperature_since_previous_post_processing",
+    "mn2t": "minimum_2m_temperature_since_previous_post_processing",
+    "stl1": "soil_temperature_level_1",
+    "stl2": "soil_temperature_level_2",
+    "stl3": "soil_temperature_level_3",
+    "stl4": "soil_temperature_level_4",
+    "ssr": "surface_net_solar_radiation",
+    "tp": "total_precipitation"
   },
   "required_properties": [
     "from_date",

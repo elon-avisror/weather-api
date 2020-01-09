@@ -3,118 +3,22 @@ import json
 import cdsapi
 from datetime import datetime, timedelta
 
+with open('.config.json') as json_data_file:
+    config = json.load(json_data_file)
+
 
 class Handler:
-    date_format: str = "%d-%m-%Y"
-    timestamp_format: str = "%H:%M:%S.%f"
-    format_types: list = ["json", "raw"]
-
-    data_sets_variables: dict = {
-        "reanalysis-era5-single-levels": [
-            "soil_temperature_level_1",
-            "10m_u_component_of_wind",
-            "10m_v_component_of_wind",
-            "2m_temperature",
-            "soil_temperature_level_2",
-            "surface_net_solar_radiation",
-            "soil_temperature_level_3",
-            "maximum_2m_temperature_since_previous_post_processing",
-            "minimum_2m_temperature_since_previous_post_processing",
-            "total_precipitation",
-            "soil_temperature_level_4"
-        ],
-        "reanalysis-era5-pressure-levels": [
-            "specific_humidity"
-        ]
-    }
-
-    variables: list = [
-        "specific_humidity",
-        "soil_temperature_level_1",
-        "10m_u_component_of_wind",
-        "10m_v_component_of_wind",
-        "2m_temperature",
-        "soil_temperature_level_2",
-        "surface_net_solar_radiation",
-        "soil_temperature_level_3",
-        "maximum_2m_temperature_since_previous_post_processing",
-        "minimum_2m_temperature_since_previous_post_processing",
-        "total_precipitation",
-        "soil_temperature_level_4"
-    ]
-
-    short_name_variables: list = [
-        "q",
-        "10u",
-        "10v",
-        "2t",
-        "mx2t",
-        "mn2t",
-        "stl1",
-        "stl2",
-        "stl3",
-        "stl4",
-        "ssr",
-        "tp"
-    ]
-
-    times: list = [
-        "00:00",
-        "01:00",
-        "02:00",
-        "03:00",
-        "04:00",
-        "05:00",
-        "06:00",
-        "07:00",
-        "08:00",
-        "09:00",
-        "10:00",
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "15:00",
-        "16:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00",
-        "22:00",
-        "23:00"
-    ]
-
-    params_dict: dict = {4: "specific_humidity",
-                         10: "soil_temperature_level_1",
-                         36: "10m_u_component_of_wind",
-                         37: "10m_v_component_of_wind",
-                         38: "2m_temperature",
-                         41: "soil_temperature_level_2",
-                         47: "surface_net_solar_radiation",
-                         54: "soil_temperature_level_3",
-                         72: "maximum_2m_temperature_since_previous_post_processing",
-                         73: "minimum_2m_temperature_since_previous_post_processing",
-                         99: "total_precipitation",
-                         107: "soil_temperature_level_4"}
-
-    short_name_dict: dict = {
-        "specific_humidity": "q",
-        "10m_u_component_of_wind": "10u",
-        "10m_v_component_of_wind": "10v",
-        "2m_temperature": "2t",
-        "maximum_2m_temperature_since_previous_post_processing": "mx2t",
-        "minimum_2m_temperature_since_previous_post_processing": "mn2t",
-        "soil_temperature_level_1": "stl1",
-        "soil_temperature_level_2": "stl2",
-        "soil_temperature_level_3": "stl3",
-        "soil_temperature_level_4": "stl4",
-        "surface_net_solar_radiation": "ssr",
-        "total_precipitation": "tp"
-    }
-
-    required_properties: list = ["from_date", "latitude", "longitude"]
-    optional_properties: list = ["to_date", "grid", "format_type", "variables"]
+    date_format: str = config["date_format"]
+    timestamp_format: str = config["timestamp_format"]
+    format_types: list = config["format_types"]
+    data_sets_variables: dict = config["data_sets_variables"]
+    variables: list = config["variables"]
+    short_name_variables: list = config["short_name_variables"]
+    times: list = config["times"]
+    params_dict: dict = config["params_dict"]  # TODO: handle from string to number
+    short_name_dict: dict = config["short_name_variables"]
+    required_properties: list = config["required_properties"]
+    optional_properties: list = config["optional_properties"]
 
     def __init__(self) -> None:
         self.dir: str = os.getcwd() + "/"
@@ -482,3 +386,7 @@ class Handler:
     @staticmethod
     def get_timestamp() -> str:
         return datetime.now().time().strftime(Handler.timestamp_format)
+
+
+obj = Handler()
+print(obj.params_dict)

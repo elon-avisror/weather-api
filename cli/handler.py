@@ -3,6 +3,8 @@ import json
 import cdsapi
 from datetime import datetime, timedelta
 
+os.chdir(os.path.dirname(__file__))
+
 try:
     with open(".config.json") as json_data_file:
         config = json.load(json_data_file)
@@ -83,7 +85,7 @@ class Handler:
             cds_json.append(self.read(file_name + ".json"))
 
         day: dict = {
-            "date": single_date.strftime(self.date_format)
+            "date": single_date.strftime(Handler.date_format)
         }
 
         if self.format_type == "json":
